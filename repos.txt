@@ -1,0 +1,6 @@
+spring-petclinic https://github.com/spring-projects/spring-petclinic.git 500158f732419217507c7656904b8e6aa1bcc0d6
+javalin https://github.com/javalin/javalin.git 510eacac85ed5b73f4e28d055c0bca9722954873
+okhttp https://github.com/square/okhttp.git c3179301fc7d0266c5bf154870c2b0b9da01e7e7
+kotlinx.coroutines https://github.com/Kotlin/kotlinx.coroutines.git 7e0d1b3e9ca83652427ae00dda7d1673f058a743
+fastapi https://github.com/fastapi/fastapi.git 69ddc2badf9da1123bba4d360225ae6b085985f6
+ktor https://github.com/ktorio/ktor.git d96280165fc9890217196ed0dffd45228e35987d

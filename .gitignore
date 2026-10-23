@@ -1,0 +1,7 @@
+.cache/
+out.txt
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
