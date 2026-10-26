@@ -123,14 +123,22 @@ def analyze(path):
     def since(days):
         return (date.fromisoformat(head) - timedelta(days=days)).isoformat()
 
-    def active_since(days):
+    def active_since(days, pool=authors):
         cut = since(days)
-        return {k: v for k, v in authors.items() if last.get(k, "") >= cut}
+        return {k: v for k, v in pool.items() if last.get(k, "") >= cut}
+
+    def metrics(pool):
+        """Truck factor и доля ничьих файлов: сейчас и если уйдёт крупнейший активный."""
+        active = active_since(ACTIVE_DAYS, pool)
+        leader = biggest(active) if active else None
+        return dict(
+            tf_all=truck_factor(pool, len(files)),
+            tf_active=truck_factor(active, len(files)),
+            orphan_now=orphan_share(files, active),
+            orphan_leader=orphan_share(files, {k: v for k, v in active.items() if k != leader}),
+        )
 
     window = {days: orphan_share(files, active_since(days)) for days in WINDOWS}
-    active = active_since(ACTIVE_DAYS)
-    leader = biggest(active) if active else None
-    without_leader = {k: v for k, v in active.items() if k != leader}
 
     cut = since(ACTIVE_DAYS)
     year = [c for c in commits if c["date"] >= cut]
@@ -140,26 +148,31 @@ def analyze(path):
     credited = {p for c in agent if c["kind"] == "h"
                 for p in c["touched"] if p in authors.get(c["dev"], ())}
 
+    # Проверка чувствительности: правка с агентом не добавляет авторства человеку,
+    # но остаётся чужой правкой файла. Активность людей берётся прежняя.
+    no_agent = [dict(c, kind="a") if c["agent_co"] else c for c in commits]
+    authors_na = authorship(files, *trace(files, no_agent))
+
     return dict(
         name=name, head=head, files=len(files), commits=len(commits),
         devs=len({c["dev"] for c in commits if c["kind"] == "h"}),
-        tf_all=truck_factor(authors, len(files)),
-        tf_active=truck_factor(active, len(files)),
-        orphan_now=window[ACTIVE_DAYS],
-        orphan_leader=orphan_share(files, without_leader),
+        **metrics(authors),
         year_commits=len(year), agent_commits=len(agent),
         agent_files=len(agent_files), agent_credited=len(credited),
-        window=window,
+        window=window, na=metrics(authors_na),
     )
+
+
+TF_KEYS = ("tf_all", "tf_active", "orphan_now", "orphan_leader")
+TF_FMT = "%6d  %8d  %11.1f%%  %15.1f%%"
 
 
 def main(paths):
     rows = [analyze(p) for p in sorted(paths)]
     print("Проект               HEAD        Файлов  Коммитов  Людей  TF всё  TF актив  Ничьё сейчас  Ничьё без лидера")
     for r in rows:
-        print("%-20s %-10s  %6d  %8d  %5d  %6d  %8d  %11.1f%%  %15.1f%%" % (
-            r["name"], r["head"], r["files"], r["commits"], r["devs"], r["tf_all"],
-            r["tf_active"], r["orphan_now"], r["orphan_leader"]))
+        print("%-20s %-10s  %6d  %8d  %5d  " % (r["name"], r["head"], r["files"], r["commits"], r["devs"])
+              + TF_FMT % tuple(r[k] for k in TF_KEYS))
     print()
     print("Проект               Коммитов за год  С агентом  Файлов с агентом  Из них автор по git тот, кто коммитил")
     for r in rows:
@@ -170,6 +183,10 @@ def main(paths):
     for r in rows:
         w = r["window"]
         print("%-20s %33.1f%%  %6.1f%%  %6.1f%%" % (r["name"], w[180], w[365], w[730]))
+    print()
+    print("Без правок с агентом  TF всё  TF актив  Ничьё сейчас  Ничьё без лидера")
+    for r in rows:
+        print("%-20s " % r["name"] + TF_FMT % tuple(r["na"][k] for k in TF_KEYS))
 
 
 if __name__ == "__main__":
