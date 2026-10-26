@@ -42,6 +42,7 @@ def trace(files, commits):
     first, deliveries, total = {}, defaultdict(lambda: defaultdict(int)), defaultdict(int)
     for c in commits:
         c["touched"] = set()
+        human = c["kind"] == "h"  # авторство, и первое, и по правкам, получает только человек
         for ch in c["changes"]:
             st = ch[0][0]
             if st == "R":
@@ -55,13 +56,14 @@ def trace(files, commits):
                     continue
                 path = alive[ch[1]]
                 if st == "A":
-                    first[path] = c["dev"]
+                    if human:
+                        first[path] = c["dev"]
                     alive.pop(ch[1])
             else:
                 continue
             total[path] += 1
             c["touched"].add(path)
-            if c["kind"] == "h":
+            if human:
                 deliveries[path][c["dev"]] += 1
     return first, deliveries, total
 
@@ -184,7 +186,7 @@ def main(paths):
         w = r["window"]
         print("%-20s %33.1f%%  %6.1f%%  %6.1f%%" % (r["name"], w[180], w[365], w[730]))
     print()
-    print("Без правок с агентом  TF всё  TF актив  Ничьё сейчас  Ничьё без лидера")
+    print("Агент без авторства   TF всё  TF актив  Ничьё сейчас  Ничьё без лидера")
     for r in rows:
         print("%-20s " % r["name"] + TF_FMT % tuple(r["na"][k] for k in TF_KEYS))
 
